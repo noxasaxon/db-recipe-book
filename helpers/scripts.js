@@ -43,7 +43,7 @@ module.exports = {
     });
   },
 
-  insert: (dbName, item) => {
+  dbInsert: (dbName, item) => {
     return new Promise((resolve, reject) => {
       db.insert(item)
         .into(dbName)
@@ -61,5 +61,10 @@ module.exports = {
   },
   getDishes: () => {
     return module.exports.getAll('dishes');
+  },
+  addDish: dish => {
+    return module.exports.dbInsert('dishes', dish).then(newDish => {
+      return newDish.id;
+    });
   }
 };

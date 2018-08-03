@@ -11,6 +11,7 @@ const isNumber = helpers.isNumber;
 const dbInsert = helpers.insert;
 const checkExists = helpers.checkExists;
 const getDishes = helpers.getDishes;
+const addDish = helpers.addDish;
 
 // endpoints here
 //sanity route
