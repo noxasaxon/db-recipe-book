@@ -9,6 +9,8 @@ server.use(express.json());
 const helpers = require('./helpers/scripts');
 const isNumber = helpers.isNumber;
 const dbInsert = helpers.insert;
+const checkExists = helpers.checkExists;
+const getDishes = helpers.getDishes;
 
 // endpoints here
 //sanity route
@@ -46,43 +48,36 @@ server.post('/recipes', (req, res) => {
       idObj['name'] = recipe.dish_id;
       console.log('isName');
     }
-
-    db('dishes')
-      .where(idObj)
-      .then(count => {
-        console.log(count);
-        if (!count[0]) {
-          //dish does not exist, if name create new dish, otherwise throw error
-          if (idObj.id) {
-            throw 'Dish was not found';
-          } else {
-            //create a dish with this name
-            console.log('creating dish');
-            //add dish to DB before creating recipe
-            db.insert(idObj)
-              .into('dishes')
-              .then(ids => {
-                const id = ids[0];
-                // res.status(201).json(ids);
-                // res.status(201).json({ id, ...recipe });
-                console.log('dish created');
-                return id;
-              })
-              .then(id => {
-                //create recipe and ref this dish id
-                const newRecipe = { name: recipe.name, dish_id: id };
-                dbInsert('recipes', newRecipe, res);
-              })
-              .catch(err => {
-                console.log(err);
-                res.status(500).json(err);
-              });
-          } //end creating dish
+    checkExists('dishes', recipe.dish_id)
+      .then(dish => {
+        if (!dish) {
+          //dish not found
+          if (!isNumber(recipe.dish_id)) {
+            //create dish using this string as its name
+            dbInsert('dishes', { name: recipe.dish_id }).then(newDish => {
+              //create recipe and ref this dish id
+              const newRecipe = { name: recipe.name, dish_id: newDish.id };
+              dbInsert('recipes', newRecipe)
+                .then(insertedRecipe => {
+                  res.status(201).json(insertedRecipe);
+                })
+                .catch(err => {
+                  res.status(500).json(err);
+                });
+            });
+          } else
+            throw 'dish not found, dish_id needs to be a string if trying to create a new dish while creating a new recipe';
         } else {
-          console.log('dish found');
-          //add recipe to DB
-          dbInsert('recipes', recipe, res);
-        } //end dishFound
+          //dish was found, create dish
+          const newRecipe = { name: recipe.name, dish_id: dish.id };
+          dbInsert('recipes', newRecipe)
+            .then(insertedRecipe => {
+              res.status(201).json(insertedRecipe);
+            })
+            .catch(err => {
+              res.status(500).json(err);
+            });
+        }
       })
       .catch(err => {
         console.log(err);
@@ -169,8 +164,9 @@ server.put('/ingredients/:id', (req, res) => {
 //////// DISHES ////////
 //get
 server.get('/dishes', (req, res) => {
-  db('dishes')
+  getDishes()
     .then(dishes => {
+      console.log(dishes);
       res.status(200).json(dishes);
     })
     .catch(err => res.status(500).json(err));
